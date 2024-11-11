@@ -6,6 +6,7 @@ using WhatsappBot.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddEntityFrameworkNpgsql().AddDbContext<AppDbContext>(options =>
@@ -18,6 +19,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<WebScraperService>();
 builder.Services.AddScoped<TwilioMessageService>();
+builder.Services.AddSingleton<OpenAiRealtimeClient>();
+builder.Services.AddSingleton<OpenAiService>();
+builder.Services.AddScoped<QdrantService>();
 
 var app = builder.Build();
 

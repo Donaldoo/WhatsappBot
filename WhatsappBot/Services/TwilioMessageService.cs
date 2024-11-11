@@ -11,17 +11,17 @@ public class TwilioMessageService
     {
         _configuration = configuration;
     }
-    public async Task<MessageResource> SendMessageAsync(string from)
+    public async Task<MessageResource> SendMessageAsync(string from, string botResponse)
     {
         TwilioClient.Init(_configuration["Twilio:AccountSid"], _configuration["Twilio:AuthToken"]);
         var messageOptions = new CreateMessageOptions(
             new PhoneNumber(from));
         messageOptions.From = new PhoneNumber(_configuration["Twilio:PhoneNumber"]);
-        messageOptions.Body = "Your appointment is coming up on July 21 at 3PM";
-        messageOptions.MediaUrl = new List<Uri>()
-        {
-            new Uri("https://t4.ftcdn.net/jpg/00/68/80/45/360_F_68804542_8okyINK2f0DtBlGBQBeNrp2sIh5yvQnt.jpg")
-        };
+        messageOptions.Body = botResponse;
+        // messageOptions.MediaUrl = new List<Uri>()
+        // {
+        //     new Uri("https://t4.ftcdn.net/jpg/00/68/80/45/360_F_68804542_8okyINK2f0DtBlGBQBeNrp2sIh5yvQnt.jpg")
+        // };
 
         var message = await MessageResource.CreateAsync(messageOptions);
         return message;

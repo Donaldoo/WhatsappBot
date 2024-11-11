@@ -8,14 +8,15 @@ namespace WhatsappBot.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class TwilioMessagesController(TwilioMessageService twilioMessageService) : ControllerBase
+public class TwilioMessagesController(TwilioMessageService twilioMessageService, OpenAiService openAiService) : ControllerBase
 {
     [HttpPost("send")]
     public async Task<MessageResource> SendMessage([FromForm] IFormCollection message)
     {
         try
         {
-            return await twilioMessageService.SendMessageAsync(message["From"][0]);
+            var botResponse = await openAiService.GenerateBotMessage(message["Body"][0]);
+            return await twilioMessageService.SendMessageAsync(message["From"][0], botResponse);
         }
         catch (Exception e)
         {
