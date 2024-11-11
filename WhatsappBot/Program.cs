@@ -17,7 +17,6 @@ builder.Services.AddHttpClient();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<WebScraperService>();
-builder.Services.AddScoped<TwilioMessageService>();
 
 var app = builder.Build();
 
