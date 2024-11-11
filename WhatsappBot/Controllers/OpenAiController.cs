@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Npgsql;
+using Newtonsoft.Json;
 using OpenAI.Chat;
 using WhatsappBot.Data;
+using WhatsappBot.Services;
 
 namespace WhatsappBot.Controllers;
 
@@ -12,35 +12,89 @@ public class OpenAiController : ControllerBase
 {
     private readonly ChatClient _chatClient;
     private readonly AppDbContext _db;
+    private readonly OpenAiRealtimeClient _client;
+    private readonly QdrantService _qdrantService;
 
-    public OpenAiController(AppDbContext db)
+    public OpenAiController(AppDbContext db, OpenAiRealtimeClient client, QdrantService qdrantService)
     {
         _db = db;
-        _chatClient = new ChatClient("gpt-3.5-turbo",
-            "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");
+        _client = client;
+        _qdrantService = qdrantService;
+        _chatClient = new ChatClient("gpt-4o",
+            "sk-glWCbr31sohrUuM-ls8S1GCm8xD-njSu-p0sk5mneAT3BlbkFJEbdcsNmuL5YLIma1m-05zJdVDxwTHB1E2hM8tfyJsA");
     }
 
     [HttpPost("OpenAiInfo")]
     public async Task<IActionResult> Get(string userInput)
     {
-        var prompt = $"Extract relevant keywords for searching products from the request: '{userInput}'";
-       var openAiResponse = await _chatClient.CompleteChatAsync(prompt);
-
-       var keywords = openAiResponse.Value.Content[0].Text.Replace(" ", " & ");
-       var query = @"SELECT * FROM ""Products"" WHERE to_tsvector('simple', ""Name"" || ' ' || ""Description"" || ' ' || regexp_replace(""Link"", '[-/]', ' ', 'g')) @@ to_tsquery(@keywords)";
-        var products = await _db.Products
-            .FromSqlRaw(query,
-                new NpgsqlParameter("keywords", NpgsqlTypes.NpgsqlDbType.Text) { Value = keywords })
-            .ToListAsync();
+        var allProducts = await _qdrantService.SearchProducts(userInput);
+        var j = JsonConvert.SerializeObject(allProducts);
+        var prompt =
+            $"Je nje doktor dhe je duke folur me nje pacient. Ketu ke disa te dhena qe mund te ndihmojne {j}, bazuar ne keto te dhena zgjidh rreth 3 ilacet me te pershtatshme (emrat dhe cmimet) qe mund te ndihmojne kete pacient: '{userInput}'." +
+            $"Pergjigjet ktheji si nje person real.";
         
-        if (products.Count == 0)
+        var openAiResponse = await _chatClient.CompleteChatAsync(prompt);
+        return Ok($"{openAiResponse.Value.Content[0].Text}");
+    }
+
+    [HttpPost("start")]
+    public async Task<IActionResult> StartWebSocketCommunication()
+    {
+        try
         {
-            return Ok($"No products found for '{userInput}'.");
+            await _client.ConnectAsync();
+            return Ok("WebSocket communication started.");
         }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"An error occurred: {ex.Message}");
+        }
+    }
 
-        var responsePrompt = $"The available products for '{userInput}' include:\n";
-        responsePrompt = products.Aggregate(responsePrompt, (current, product) => current + $"- {product.Name}: {product.Description}, priced at {product.PriceNotFormatted}\n");
-        
-        return Ok($"{responsePrompt}");
+    [HttpPost("send")]
+    public async Task<IActionResult> SendMessage([FromBody] string userMessage)
+    {
+        try
+        {
+            var message = new
+            {
+                type = "conversation.item.create",
+                item = new
+                {
+                    type = "message",
+                    role = "user",
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "input_text",
+                            text = userMessage
+                        }
+                    }
+                }
+            };
+
+
+            await _client.SendMessageAsync(message);
+            return Ok("Message sent.");
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"An error occurred: {ex.Message}");
+        }
+    }
+
+    [HttpPost("close")]
+    public async Task<IActionResult> CloseWebSocketCommunication()
+    {
+        try
+        {
+            await _client.CloseAsync();
+            return Ok("WebSocket connection closed.");
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"An error occurred: {ex.Message}");
+        }
     }
 }
