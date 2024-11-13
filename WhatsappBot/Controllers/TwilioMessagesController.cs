@@ -8,15 +8,42 @@ namespace WhatsappBot.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class TwilioMessagesController(TwilioMessageService twilioMessageService, OpenAiService openAiService) : ControllerBase
+public class TwilioMessagesController : ControllerBase
 {
+    private readonly OpenAiSessionManager _openAiSessionManager;
+
+    public TwilioMessagesController(OpenAiSessionManager openAiSessionManager)
+    {
+        _openAiSessionManager = openAiSessionManager;
+    }
+
     [HttpPost("send")]
-    public async Task<MessageResource> SendMessage([FromForm] IFormCollection message)
+    public async Task SendMessage([FromForm] IFormCollection message)
     {
         try
         {
-            var botResponse = await openAiService.GenerateBotMessage(message["Body"][0]);
-            return await twilioMessageService.SendMessageAsync(message["From"][0], botResponse);
+            var messageOptions = new
+            {
+                type = "conversation.item.create",
+                item = new
+                {
+                    type = "message",
+                    role = "user",
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "input_text",
+                            text = message["Body"][0]
+                        }
+                    }
+                }
+            };
+            var response = await _openAiSessionManager.GetOrCreateClientAsync(message["From"][0], message["body"][0]);
+            if (!response.IsNewSession)
+            {
+                await response.Client.SendMessageAsync(messageOptions);
+            }
         }
         catch (Exception e)
         {

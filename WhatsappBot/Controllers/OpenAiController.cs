@@ -37,19 +37,19 @@ public class OpenAiController : ControllerBase
         return Ok($"{openAiResponse.Value.Content[0].Text}");
     }
 
-    [HttpPost("start")]
-    public async Task<IActionResult> StartWebSocketCommunication()
-    {
-        try
-        {
-            await _client.ConnectAsync();
-            return Ok("WebSocket communication started.");
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, $"An error occurred: {ex.Message}");
-        }
-    }
+    // [HttpPost("start")]
+    // public async Task<IActionResult> StartWebSocketCommunication()
+    // {
+    //     try
+    //     {
+    //         await _client.ConnectAsync();
+    //         return Ok("WebSocket communication started.");
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         return StatusCode(500, $"An error occurred: {ex.Message}");
+    //     }
+    // }
 
     [HttpPost("send")]
     public async Task<IActionResult> SendMessage([FromBody] string userMessage)
