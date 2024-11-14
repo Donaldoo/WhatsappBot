@@ -84,7 +84,7 @@ public class QdrantService
         var searchResults = await _client.SearchAsync("products_collection", embedding, limit:10);
         var products = searchResults.Select(result => new Product
         {
-            Number = result.Payload.TryGetValue("number", out var number) ? number.ToString() : "Unknown",
+            Number = result.Id.Num.ToString(),
             Name = result.Payload.TryGetValue("name", out var name) ? name.ToString() : "Unknown",
             Description = result.Payload.TryGetValue("description", out var description) ? description.ToString() : "No description",
             Link = result.Payload.TryGetValue("link", out var link) ? link.ToString() : "No link",

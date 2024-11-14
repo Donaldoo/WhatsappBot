@@ -1,7 +1,5 @@
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using Twilio.Http;
-using Twilio.Rest.Api.V2010.Account;
+using Newtonsoft.Json;
 using WhatsappBot.Services;
 
 namespace WhatsappBot.Controllers;
@@ -22,27 +20,27 @@ public class TwilioMessagesController : ControllerBase
     {
         try
         {
-            var messageOptions = new
-            {
-                type = "conversation.item.create",
-                item = new
-                {
-                    type = "message",
-                    role = "user",
-                    content = new[]
-                    {
-                        new
-                        {
-                            type = "input_text",
-                            text = message["Body"][0]
-                        }
-                    }
-                }
-            };
+            // var messageOptions = new
+            // {
+            //     type = "conversation.item.create",
+            //     item = new
+            //     {
+            //         type = "message",
+            //         role = "user",
+            //         content = new[]
+            //         {
+            //             new
+            //             {
+            //                 type = "input_text",
+            //                 text = message["Body"][0] + productsJson
+            //             }
+            //         }
+            //     }
+            // };
             var response = await _openAiSessionManager.GetOrCreateClientAsync(message["From"][0], message["body"][0]);
             if (!response.IsNewSession)
             {
-                await response.Client.SendMessageAsync(messageOptions);
+                await response.Client.SendMessageAsync(message["Body"][0]);
             }
         }
         catch (Exception e)

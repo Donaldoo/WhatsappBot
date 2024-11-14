@@ -75,7 +75,7 @@ public class OpenAiController : ControllerBase
             };
 
 
-            await _client.SendMessageAsync(message);
+            await _client.SendMessageAsync(userMessage);
             return Ok("Message sent.");
         }
         catch (Exception ex)

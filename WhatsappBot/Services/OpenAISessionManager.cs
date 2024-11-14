@@ -1,43 +1,49 @@
 using System.Collections.Concurrent;
-using WhatsappBot.Services;
+
+namespace WhatsappBot.Services;
 
 public class OpenAiSessionManager
 {
     private readonly ConcurrentDictionary<string, OpenAiRealtimeClient> _clients = new();
     private readonly TwilioMessageService _twilioClient;
-    private readonly IConfiguration _configuration;
+    private readonly IServiceProvider _serviceProvider;
 
-    public OpenAiSessionManager(TwilioMessageService twilioClient, IConfiguration configuration)
+    public OpenAiSessionManager(TwilioMessageService twilioClient,
+        IServiceProvider serviceProvider)
     {
         _twilioClient = twilioClient;
-        _configuration = configuration;
+        _serviceProvider = serviceProvider;
     }
 
     public async Task<OpenAISessionResponse> GetOrCreateClientAsync(string sessionId, string msg)
     {
-        var client = _clients.TryGetValue(sessionId, out var existingClient) ? existingClient : null;
-
-        if (client != null)
+        using (var scope = _serviceProvider.CreateScope())
         {
-            return new OpenAISessionResponse
+            var qdrantService = scope.ServiceProvider.GetRequiredService<QdrantService>();
+            var client = _clients.GetValueOrDefault(sessionId);
+
+            if (client != null)
             {
-                IsNewSession = false,
-                Client = client
+                return new OpenAISessionResponse
+                {
+                    IsNewSession = false,
+                    Client = client
+                };
+            }
+
+            return new OpenAISessionResponse()
+            {
+                Client = _clients.GetOrAdd(sessionId, await Task.Run(async () =>
+                {
+                    var cl = new OpenAiRealtimeClient(sessionId, _twilioClient, qdrantService);
+                    await cl.ConnectAsync(msg);
+                    Console.WriteLine("Connected session: " + sessionId);
+                    return cl;
+                })),
+                IsNewSession = true
             };
         }
-
-
-        return new OpenAISessionResponse()
-        {
-            Client = _clients.GetOrAdd(sessionId, await Task.Run(async () =>
-            {
-                var cl = new OpenAiRealtimeClient(sessionId, _twilioClient, _configuration);
-                await cl.ConnectAsync(msg);
-                return cl;
-            })),
-            IsNewSession = true
-        };
-}
+    }
 
     public async Task CloseSessionAsync(string sessionId)
     {
