@@ -18,10 +18,10 @@ builder.Services.AddHttpClient();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<WebScraperService>();
-builder.Services.AddScoped<TwilioMessageService>();
-builder.Services.AddSingleton<OpenAiRealtimeClient>();
-builder.Services.AddSingleton<OpenAiService>();
+builder.Services.AddSingleton<TwilioMessageService>();
+builder.Services.AddScoped<OpenAiService>();
 builder.Services.AddScoped<QdrantService>();
+builder.Services.AddSingleton<OpenAiSessionManager>();
 
 var app = builder.Build();
 
