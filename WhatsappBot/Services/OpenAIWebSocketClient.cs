@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Newtonsoft.Json;
 using Twilio;
 using JsonException = System.Text.Json.JsonException;
@@ -57,7 +58,7 @@ public class OpenAiRealtimeClient
             {
                 modalities = new[] { "text" },
                 instructions =
-                    "Ne fillim te bisedes thuaj: 'Hello, how can I help you?' si text. Mos perdor format JSON. Je nje doktor. Pergjigju shkurt dhe ne gjuhen qe useri flet me ty. Ne qofte se te duhet te sygjerosh ilace, zgjidh 5 ilace nga te dhenat qe do te kalohen ne prompt dhe refero vetem emrin dhe cmimin." +
+                    "Ne fillim te bisedes thuaj: 'Pershendetje, si mund t'ju ndihmoj?' si text. Mos perdor format JSON. Je nje doktor. Pergjigju shkurt dhe ne gjuhen qe useri flet me ty. Ne qofte se te duhet te sygjerosh ilace, zgjidh 5 ilace nga te dhenat qe do te kalohen ne prompt dhe refero vetem emrin dhe cmimin." +
                     "Pergjigjet ktheji si nje person real. Edhe nqs te dhenat thone qe nje ilac nuk eshte ne stock, perseri mund ta referosh. Pergjigjet ktheji ne formatin text ose markdown dhe asnjehere ne JSON. I repeat: Do NOT use JSON format!!!"
             }
         };
@@ -69,22 +70,66 @@ public class OpenAiRealtimeClient
         _ = Task.Run(async () => await ReceiveMessagesAsync(_cancellationTokenSource.Token),
             _cancellationTokenSource.Token);
     }
-
+    
+    public async Task PlaceOrder(string name, int quantity, string address, string productNumber)
+    {
+        Console.WriteLine("order placed" + address + quantity + name + productNumber);
+        await _twilioClient.SendMessageAsync(_sessionId,
+            "Faleminderit per porosine e kryer, nje motorritst do ju kontaktoje me vone!");
+    }
+    
     public async Task SendMessageAsync(string message)
     {
+        if (_socket.State != WebSocketState.Open)
+        {
+            await ConnectAsync(message);
+        }
+        var tools = new object[]
+        {
+            new
+            {
+                name = "PlaceOrder",
+                type = "function",
+                    description = "Gjithmone kerkoj userit te shkruaj 'Konfirmo' para se te therrasesh funksionin funksionin. Mos e thirr funksionin pa thene useri 'Konfirmo'",
+                    parameters = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
+                            emri = new {
+                                type = "string",
+                                description = "The order to place"
+                            },
+                            sasia = new {
+                                type = "number",
+                                description = "The quantity of the order"
+                            },
+                            adresa = new {
+                                type = "string",
+                                description = "The address to deliver the order"
+                            }
+                        },
+                        required = new [] { "emri", "sasia", "adresa" },
+                        additionalProperties = false
+                    }
+            }
+        };
+        
         var products = await _qdrantService.SearchProducts(message);
         var productsJson = JsonConvert.SerializeObject(products);
-        Console.WriteLine(productsJson);
         var responseCreateMessage = new
         {
             type = "response.create",
             response = new
             {
+                tools = tools,
                 modalities = new[] { "text" },
                 instructions =
                     "Je nje doktor. Pergjigju shkurt dhe ne gjuhen qe useri flet me ty. Ne qofte se te duhet te sygjerosh ilace, zgjidh 5 ilace nga te dhenat qe do te kalohen ne prompt dhe refero vetem emrin dhe cmimin." +
-                    $"Pergjigjet ktheji si nje person real. Edhe nqs te dhenat thone qe nje ilac nuk eshte ne stock, perseri mund ta referosh. Pergjigjet ktheji ne formatin text ose markdown dhe asnjehere ne JSON. Keto jane disa te dhena qe mund te ndihmojne: {productsJson}. Do NOT use JSON format!!!" +
-                    $"Ne qofte se nuk ke informacion rreth ilaceve, mund ti kerkosh dhe njeher userit te shkruaj emrin e sakte te ilacit.'"
+                    $"Pergjigjet ktheji si nje person real. Edhe nqs te dhenat thone qe nje ilac nuk eshte ne stock, perseri mund ta referosh. Pergjigjet ktheji ne formatin text ose markdown dhe asnjehere ne JSON. Keto jane disa te dhena qe mund te ndihmojne: {productsJson}, perdori vetem kur te nevojiten, nuk eshte e domosdoshme te bazohesh gjithmone ketu." +
+                    $" Do NOT use JSON format!!!" +
+                    $"Ne qofte se nuk ke informacion rreth ilaceve, mund ti kerkosh dhe njeher userit te shkruaj emrin e sakte te ilacit.'" +
+                    "Kur nje person kerkon te beje nje porosi, duhet te kthesh nje forme  e cila kerkon emrin, produktin, sasine dhe adresen."
             }
         };
         
@@ -139,6 +184,21 @@ public class OpenAiRealtimeClient
                     try
                     {
                         using var jsonDocument = JsonDocument.Parse(completeMessage);
+                        if (jsonDocument.RootElement.TryGetProperty("item", out var item))
+                        {
+                            Console.WriteLine(item);
+                            if (item.TryGetProperty("type", out var eventType) && eventType.ToString() == "function_call" && item.TryGetProperty("status", out var status) && status.ToString() == "completed")
+                            {
+                                var functionName = item.GetProperty("name").GetString();
+                                var arguments = item.GetProperty("arguments").GetString();
+                                
+                                Console.WriteLine($"Function: {functionName}, Arguments: {arguments}");
+                                
+                                await HandleFunctionCall(functionName, arguments);
+                            }
+                        }
+
+
                         if (jsonDocument.RootElement.TryGetProperty("text", out var textElement))
                         {
                             Console.WriteLine("Received JSON22 text message: " + textElement.GetString());
@@ -176,4 +236,32 @@ public class OpenAiRealtimeClient
 
         _cancellationTokenSource.Cancel();
     }
+    
+    private async Task HandleFunctionCall(string functionName, string argumentsJson)
+    {
+        try
+        {
+            switch (functionName)
+            {
+                case "PlaceOrder":
+                    var placeOrderArgs = JsonDocument.Parse(argumentsJson);
+                    placeOrderArgs.RootElement.TryGetProperty("emri", out var name);
+                    placeOrderArgs.RootElement.TryGetProperty("sasia", out var quantity);
+                    placeOrderArgs.RootElement.TryGetProperty("adresa", out var address);
+                    placeOrderArgs.RootElement.TryGetProperty("numri", out var productNumber);
+                    await PlaceOrder(name.ToString(), int.Parse(quantity.ToString()), address.ToString(), productNumber.ToString());
+                    break;
+
+                default:
+                    Console.WriteLine($"Unknown function: {functionName}");
+                    break;
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("error calling function, " + e.Message);
+            throw;
+        }
+    }
+
 }
