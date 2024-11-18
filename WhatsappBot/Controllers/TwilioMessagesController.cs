@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using WhatsappBot.Services;
@@ -9,10 +10,12 @@ namespace WhatsappBot.Controllers;
 public class TwilioMessagesController : ControllerBase
 {
     private readonly OpenAiSessionManager _openAiSessionManager;
+    private readonly TwilioMessageService _twilioMessageService;
 
-    public TwilioMessagesController(OpenAiSessionManager openAiSessionManager)
+    public TwilioMessagesController(OpenAiSessionManager openAiSessionManager, TwilioMessageService twilioMessageService)
     {
         _openAiSessionManager = openAiSessionManager;
+        _twilioMessageService = twilioMessageService;
     }
 
     [HttpPost("send")]
@@ -47,6 +50,30 @@ public class TwilioMessagesController : ControllerBase
         {
             Console.WriteLine(e);
             throw;
+        }
+    }
+
+    [HttpGet("getLatestMessages")]
+    public async Task<IActionResult> GetTheLastMessages(string to)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(to))
+            {
+                return BadRequest("User phone number is required.");
+            }
+            var response = await _twilioMessageService.GetMessagesFromUser(to);
+            if (response == null || response.Count == 0)
+            {
+                return NotFound(new { error = "No messages found for the provided user." });
+            }
+            return Ok(response);
+
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return StatusCode(500, new { error = "Internal server error", message = e.Message });
         }
     }
 }

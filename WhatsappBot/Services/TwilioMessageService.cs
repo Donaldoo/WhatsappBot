@@ -22,8 +22,52 @@ public class TwilioMessageService
         // {
         //     new Uri("https://t4.ftcdn.net/jpg/00/68/80/45/360_F_68804542_8okyINK2f0DtBlGBQBeNrp2sIh5yvQnt.jpg")
         // };
-
+      
         var message = await MessageResource.CreateAsync(messageOptions);
         return message;
     }
+
+    public async Task<List<string>> GetMessagesFromUser(string userNumber)
+    {
+        try
+        {
+          
+            if (string.IsNullOrEmpty(userNumber))
+            {
+                throw new ArgumentException("The 'userNumber' cannot be null or empty.");
+            }
+
+       
+            TwilioClient.Init(_configuration["Twilio:AccountSid"], _configuration["Twilio:AuthToken"]);
+             
+            
+    
+            var messages = await MessageResource.ReadAsync(
+                to: new PhoneNumber(_configuration["Twilio:PhoneNumber"]),  
+                from: new PhoneNumber(userNumber),  
+                limit: 20  
+            );
+
+            var messageBodies = new List<string>();
+
+    
+            foreach (var message in messages)
+            {
+                if (!string.IsNullOrEmpty(message.Body))
+                {
+                    messageBodies.Add(message.Body);
+                }
+            }
+
+            return messageBodies;
+        }
+        catch (Exception e)
+        {
+            // Handle exceptions (e.g., log them, rethrow, etc.)
+            Console.WriteLine(e.Message);
+            throw;
+        }
+    }
+
+
 }
