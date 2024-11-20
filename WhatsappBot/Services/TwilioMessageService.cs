@@ -65,4 +65,14 @@ public class TwilioMessageService
 
         return allMessages;
     }
+
+    public async Task SendTemplateAsync(string to)
+    {
+        TwilioClient.Init(_configuration["Twilio:AccountSid"], _configuration["Twilio:AuthToken"]);
+        var messageOptions = new CreateMessageOptions(
+            new PhoneNumber(to));
+        messageOptions.From = new PhoneNumber(_configuration["Twilio:PhoneNumber"]);
+        messageOptions.ContentSid = "HXc70a08e32847469cea1888618f5c29db";
+        var message = await MessageResource.CreateAsync(messageOptions);
+    }
 }

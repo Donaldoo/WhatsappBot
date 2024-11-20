@@ -56,7 +56,7 @@ public class OpenAiRealtimeClient
             type = "response.create",
             response = new
             {
-                modalities = new[] { "text" },
+                modalities = new[] { "text", "audio" },
                 instructions =
                     "Ne fillim te bisedes thuaj: 'Pershendetje, si mund t'ju ndihmoj?' si text. Mos perdor format JSON. Je nje doktor. Pergjigju shkurt dhe ne gjuhen qe useri flet me ty. Ne qofte se te duhet te sygjerosh ilace, zgjidh 5 ilace nga te dhenat qe do te kalohen ne prompt dhe refero vetem emrin dhe cmimin." +
                     "Pergjigjet ktheji si nje person real. Edhe nqs te dhenat thone qe nje ilac nuk eshte ne stock, perseri mund ta referosh. Pergjigjet ktheji ne formatin text ose markdown dhe asnjehere ne JSON. I repeat: Do NOT use JSON format!!!"
@@ -65,7 +65,7 @@ public class OpenAiRealtimeClient
 
         var responseCreateMessageJson = JsonSerializer.Serialize(initialMessage);
         var responseCreateBytes = Encoding.UTF8.GetBytes(responseCreateMessageJson);
-        await _socket.SendAsync(new ArraySegment<byte>(responseCreateBytes), WebSocketMessageType.Text, true,
+        await _socket.SendAsync(new ArraySegment<byte>(responseCreateBytes), WebSocketMessageType.Binary, true,
             _cancellationTokenSource.Token);
         _ = Task.Run(async () => await ReceiveMessagesAsync(_cancellationTokenSource.Token),
             _cancellationTokenSource.Token);
