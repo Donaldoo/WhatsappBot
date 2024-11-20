@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using WhatsappBot.Services;
@@ -25,6 +24,21 @@ public class TwilioMessagesController : ControllerBase
         {
             var response = await _openAiService.GenerateBotMessage(message["body"][0], message["from"][0]);
             await _twilioMessageService.SendMessageAsync(message["from"][0], response);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+    }
+    
+    [HttpPost("send-template")]
+    public async Task<IActionResult> SendTemplate([FromQuery] string to)
+    {
+        try
+        {
+            await _twilioMessageService.SendTemplateAsync(to);
+            return Ok();
         }
         catch (Exception e)
         {
