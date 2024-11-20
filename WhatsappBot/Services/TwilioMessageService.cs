@@ -1,6 +1,7 @@
 using Twilio;
 using Twilio.Rest.Api.V2010.Account;
 using Twilio.Types;
+using WhatsappBot.Models;
 
 namespace WhatsappBot.Services;
 
@@ -27,10 +28,9 @@ public class TwilioMessageService
         return message;
     }
 
-    public async Task<List<string>> GetMessagesFromUser(string userNumber)
+    public async Task<List<ConversationMessage>> GetMessagesFromUser(string userNumber,int limit)
     {
-        try
-        {
+       
           
             if (string.IsNullOrEmpty(userNumber))
             {
@@ -42,32 +42,37 @@ public class TwilioMessageService
              
             
     
-            var messages = await MessageResource.ReadAsync(
+            var incomingMessagess = await MessageResource.ReadAsync(
                 to: new PhoneNumber(_configuration["Twilio:PhoneNumber"]),  
                 from: new PhoneNumber(userNumber),  
-                limit: 20  
+                limit: limit
             );
-
-            var messageBodies = new List<string>();
-
-    
-            foreach (var message in messages)
-            {
-                if (!string.IsNullOrEmpty(message.Body))
+            var outgoingMessages = await MessageResource.ReadAsync(
+                from: new PhoneNumber(_configuration["Twilio:PhoneNumber"]),
+                to: new PhoneNumber(userNumber),
+                limit:limit
+            );
+            var allMessages = incomingMessagess.Select(msg => new ConversationMessage
                 {
-                    messageBodies.Add(message.Body);
-                }
-            }
+                    Body = msg.Body,
+                    From = msg.From.ToString(),
+                    To = msg.To.ToString(),
+                    DateSent = msg.DateSent
+                })
+                .Concat(outgoingMessages.Select(msg => new ConversationMessage
+                {
+                    Body = msg.Body,
+                    From = msg.From.ToString(),
+                    To = msg.To.ToString(),
+                    DateSent = msg.DateSent
+                }))
+                .OrderBy(msg => msg.DateSent)
+                .ToList();
 
-            return messageBodies;
+            return allMessages;
         }
-        catch (Exception e)
-        {
-            // Handle exceptions (e.g., log them, rethrow, etc.)
-            Console.WriteLine(e.Message);
-            throw;
-        }
-    }
+      
+    
 
 
 }

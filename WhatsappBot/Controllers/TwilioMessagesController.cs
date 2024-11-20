@@ -54,7 +54,7 @@ public class TwilioMessagesController : ControllerBase
     }
 
     [HttpGet("getLatestMessages")]
-    public async Task<IActionResult> GetTheLastMessages(string to)
+    public async Task<IActionResult> GetTheLastMessages(string to,int limit)
     {
         try
         {
@@ -62,7 +62,7 @@ public class TwilioMessagesController : ControllerBase
             {
                 return BadRequest("User phone number is required.");
             }
-            var response = await _twilioMessageService.GetMessagesFromUser(to);
+            var response = await _twilioMessageService.GetMessagesFromUser(to,limit);
             if (response == null || response.Count == 0)
             {
                 return NotFound(new { error = "No messages found for the provided user." });
