@@ -9,12 +9,12 @@ namespace WhatsappBot.Controllers;
 [Route("api/[controller]")]
 public class TwilioMessagesController : ControllerBase
 {
-    private readonly OpenAiSessionManager _openAiSessionManager;
+    private readonly OpenAiService _openAiService;
     private readonly TwilioMessageService _twilioMessageService;
 
-    public TwilioMessagesController(OpenAiSessionManager openAiSessionManager, TwilioMessageService twilioMessageService)
+    public TwilioMessagesController(OpenAiService openAiService, TwilioMessageService twilioMessageService)
     {
-        _openAiSessionManager = openAiSessionManager;
+        _openAiService = openAiService;
         _twilioMessageService = twilioMessageService;
     }
 
@@ -23,28 +23,8 @@ public class TwilioMessagesController : ControllerBase
     {
         try
         {
-            // var messageOptions = new
-            // {
-            //     type = "conversation.item.create",
-            //     item = new
-            //     {
-            //         type = "message",
-            //         role = "user",
-            //         content = new[]
-            //         {
-            //             new
-            //             {
-            //                 type = "input_text",
-            //                 text = message["Body"][0] + productsJson
-            //             }
-            //         }
-            //     }
-            // };
-            var response = await _openAiSessionManager.GetOrCreateClientAsync(message["From"][0], message["body"][0]);
-            if (!response.IsNewSession)
-            {
-                await response.Client.SendMessageAsync(message["Body"][0]);
-            }
+            var response = await _openAiService.GenerateBotMessage(message["body"][0], message["from"][0]);
+            await _twilioMessageService.SendMessageAsync(message["from"][0], response);
         }
         catch (Exception e)
         {
@@ -54,7 +34,7 @@ public class TwilioMessagesController : ControllerBase
     }
 
     [HttpGet("getLatestMessages")]
-    public async Task<IActionResult> GetTheLastMessages(string to,int limit)
+    public async Task<IActionResult> GetTheLastMessages(string to)
     {
         try
         {
@@ -62,7 +42,7 @@ public class TwilioMessagesController : ControllerBase
             {
                 return BadRequest("User phone number is required.");
             }
-            var response = await _twilioMessageService.GetMessagesFromUser(to,limit);
+            var response = await _twilioMessageService.GetMessagesFromUser(to);
             if (response == null || response.Count == 0)
             {
                 return NotFound(new { error = "No messages found for the provided user." });
