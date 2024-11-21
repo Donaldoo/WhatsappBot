@@ -9,7 +9,14 @@ namespace WhatsappBot.Data
         {
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"));
         }
-        
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<PhoneNumbers>()
+                .HasKey(pc => new { pc.Id });
+        }
+
         public DbSet<Product> Products { get; set; }
+        public DbSet<PhoneNumbers> PhoneNumbers { get; set; }
+        
     }
 };

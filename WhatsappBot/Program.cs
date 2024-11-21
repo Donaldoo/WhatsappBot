@@ -17,6 +17,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<WebScraperService>();
+builder.Services.AddScoped<PhoneNumberService>();
 builder.Services.AddSingleton<TwilioMessageService>();
 builder.Services.AddScoped<OpenAiService>();
 builder.Services.AddScoped<QdrantService>();

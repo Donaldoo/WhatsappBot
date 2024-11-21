@@ -10,11 +10,12 @@ public class TwilioMessagesController : ControllerBase
 {
     private readonly OpenAiService _openAiService;
     private readonly TwilioMessageService _twilioMessageService;
-
-    public TwilioMessagesController(OpenAiService openAiService, TwilioMessageService twilioMessageService)
+    private readonly PhoneNumberService _phoneNumberService;
+    public TwilioMessagesController(OpenAiService openAiService, TwilioMessageService twilioMessageService, PhoneNumberService phoneNumberService)
     {
         _openAiService = openAiService;
         _twilioMessageService = twilioMessageService;
+        _phoneNumberService = phoneNumberService;
     }
 
     [HttpPost("send")]
@@ -24,6 +25,7 @@ public class TwilioMessagesController : ControllerBase
         {
             var response = await _openAiService.GenerateBotMessage(message["body"][0], message["from"][0]);
             await _twilioMessageService.SendMessageAsync(message["from"][0], response);
+            await _phoneNumberService.CreatePhoneNumber(message["from"][0]);
         }
         catch (Exception e)
         {
