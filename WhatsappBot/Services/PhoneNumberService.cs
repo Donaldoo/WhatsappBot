@@ -45,7 +45,12 @@ public class PhoneNumberService
     public async Task<PhoneNumbers> CreatePhoneNumber(string phoneInput)
     {
         string formattedPhoneNumber  = phoneInput.Replace("whatsapp:", "").Trim();
-
+        
+        var existingPhoneNumber = await _db.PhoneNumbers.FirstOrDefaultAsync(u=>u.PhoneNumber.ToLower()==formattedPhoneNumber.ToLower());
+        if (existingPhoneNumber !=null)
+        {
+            throw new InvalidOperationException("Phone number already exists.");
+        }
         PhoneNumbers phoneNumber = new PhoneNumbers
         {
             PhoneNumber = formattedPhoneNumber
