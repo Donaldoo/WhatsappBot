@@ -42,22 +42,19 @@ public class PhoneNumberService
         }
     }
 
-    public async Task<PhoneNumbers> CreatePhoneNumber(string phoneInput)
+    public async Task CreatePhoneNumber(string phoneInput)
     {
-        string formattedPhoneNumber  = phoneInput.Replace("whatsapp:", "").Trim();
+        var formattedPhoneNumber  = phoneInput.Replace("whatsapp:", "").Trim();
         
-        var existingPhoneNumber = await _db.PhoneNumbers.FirstOrDefaultAsync(u=>u.PhoneNumber.ToLower()==formattedPhoneNumber.ToLower());
+        var existingPhoneNumber = await _db.PhoneNumbers.FirstOrDefaultAsync(u=>u.PhoneNumber==formattedPhoneNumber);
         if (existingPhoneNumber !=null)
         {
-            throw new InvalidOperationException("Phone number already exists.");
-        }
-        PhoneNumbers phoneNumber = new PhoneNumbers
-        {
-            PhoneNumber = formattedPhoneNumber
-        };
-       await _db.AddAsync(phoneNumber);
-       await _db.SaveChangesAsync();
-
-        return phoneNumber;
+            await _db.PhoneNumbers.AddAsync(new PhoneNumbers
+            {
+                PhoneNumber = formattedPhoneNumber
+            });
+            await _db.SaveChangesAsync();     
+        } 
+       
     }
 }
