@@ -42,17 +42,19 @@ public class PhoneNumberService
         }
     }
 
-    public async Task<PhoneNumbers> CreatePhoneNumber(string phoneInput)
+    public async Task CreatePhoneNumber(string phoneInput)
     {
-        string formattedPhoneNumber  = phoneInput.Replace("whatsapp:", "").Trim();
-
-        PhoneNumbers phoneNumber = new PhoneNumbers
+        var formattedPhoneNumber  = phoneInput.Replace("whatsapp:", "").Trim();
+        
+        var existingPhoneNumber = await _db.PhoneNumbers.FirstOrDefaultAsync(u=>u.PhoneNumber==formattedPhoneNumber);
+        if (existingPhoneNumber !=null)
         {
-            PhoneNumber = formattedPhoneNumber
-        };
-       await _db.AddAsync(phoneNumber);
-       await _db.SaveChangesAsync();
-
-        return phoneNumber;
+            await _db.PhoneNumbers.AddAsync(new PhoneNumbers
+            {
+                PhoneNumber = formattedPhoneNumber
+            });
+            await _db.SaveChangesAsync();     
+        } 
+       
     }
 }

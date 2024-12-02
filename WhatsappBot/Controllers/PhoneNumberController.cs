@@ -31,10 +31,10 @@ public class PhoneNumberController:ControllerBase
         return Ok(response);
     }
 
-    [HttpPost("Create-phoneNumber")]
-    public async Task<IActionResult> CreatePhoneNumber(string phoneInput)
-    {
-        var response = await _phoneNumberService.CreatePhoneNumber(phoneInput);
-       return StatusCode(201, response);
-    }
+    // [HttpPost("Create-phoneNumber")]
+    // public async Task<IActionResult> CreatePhoneNumber(string phoneInput)
+    // {
+    //     await _phoneNumberService.CreatePhoneNumber(phoneInput);
+    //    return StatusCode(201);
+    // }
 }
