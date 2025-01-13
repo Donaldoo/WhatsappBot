@@ -1,5 +1,8 @@
 
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerGen;
 using WhatsappBot.Data;
 using WhatsappBot.Services;
 
@@ -22,10 +25,19 @@ builder.Services.AddSingleton<TwilioMessageService>();
 builder.Services.AddScoped<OpenAiService>();
 builder.Services.AddScoped<QdrantService>();
 builder.Services.AddSingleton<OpenAiSessionManager>();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontendApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000")
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+});
 
 var app = builder.Build();
+app.UseCors("AllowFrontendApp");
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

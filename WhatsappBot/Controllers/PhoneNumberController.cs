@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Npgsql;
+using WhatsappBot.Models;
 using WhatsappBot.Services;
 
 namespace WhatsappBot.Controllers;
@@ -32,9 +34,24 @@ public class PhoneNumberController:ControllerBase
     }
 
     [HttpPost("Create-phoneNumber")]
-    public async Task<IActionResult> CreatePhoneNumber(string phoneInput)
+    public async Task<IActionResult> CreatePhoneNumber(IFormFile file)
     {
-        var response = await _phoneNumberService.CreatePhoneNumber(phoneInput);
-       return StatusCode(201, response);
+        try
+        { 
+            if (file == null || file.Length == 0) return BadRequest(new { text = "Invalid file uploaded" });
+            
+            await _phoneNumberService.AddPhoneNumbers(file);
+            return StatusCode(201, new { message = "Numbers added to database" });
+
+        }
+        catch (Exception e)
+        {
+            return Ok(new
+            {
+                text = e.InnerException is PostgresException { SqlState: "23505" }
+                    ? "The numbers are already added in database"
+                    : "There was an error processing you request"
+            });
+        }
     }
 }

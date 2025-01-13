@@ -13,6 +13,10 @@ namespace WhatsappBot.Data
         {
             modelBuilder.Entity<PhoneNumbers>()
                 .HasKey(pc => new { pc.Id });
+            
+            modelBuilder.Entity<PhoneNumbers>()
+                .HasIndex(p => p.PhoneNumber)
+                .IsUnique();
         }
 
         public DbSet<Product> Products { get; set; }
