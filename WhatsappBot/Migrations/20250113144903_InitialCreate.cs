@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace WebApplication1.Migrations
+namespace WhatsappBot.Migrations
 {
     /// <inheritdoc />
-    public partial class FinalMigration : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -26,6 +26,24 @@ namespace WebApplication1.Migrations
                     table.PrimaryKey("PK_PhoneNumbers", x => x.Id);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "Products",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "text", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: true),
+                    Number = table.Column<string>(type: "text", nullable: true),
+                    PriceNotFormatted = table.Column<string>(type: "text", nullable: true),
+                    StockValue = table.Column<int>(type: "integer", nullable: false),
+                    Link = table.Column<string>(type: "text", nullable: true),
+                    Description = table.Column<string>(type: "text", nullable: true),
+                    Image = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Products", x => x.Id);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_PhoneNumbers_PhoneNumber",
                 table: "PhoneNumbers",
@@ -38,6 +56,9 @@ namespace WebApplication1.Migrations
         {
             migrationBuilder.DropTable(
                 name: "PhoneNumbers");
+
+            migrationBuilder.DropTable(
+                name: "Products");
         }
     }
 }

@@ -8,7 +8,7 @@ using WhatsappBot.Data;
 
 #nullable disable
 
-namespace WebApplication1.Migrations
+namespace WhatsappBot.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     partial class AppDbContextModelSnapshot : ModelSnapshot
