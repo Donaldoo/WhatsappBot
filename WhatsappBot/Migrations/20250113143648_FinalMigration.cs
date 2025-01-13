@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace WebApplication1.Migrations
 {
     /// <inheritdoc />
-    public partial class AddPhoneNumbersTable : Migration
+    public partial class FinalMigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -15,12 +15,22 @@ namespace WebApplication1.Migrations
                 name: "PhoneNumbers",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    PhoneNumber = table.Column<string>(type: "text", nullable: false),
+                    FirstName = table.Column<string>(type: "text", nullable: true),
+                    LastName = table.Column<string>(type: "text", nullable: true),
+                    Company = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_PhoneNumbers", x => x.Id);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PhoneNumbers_PhoneNumber",
+                table: "PhoneNumbers",
+                column: "PhoneNumber",
+                unique: true);
         }
 
         /// <inheritdoc />
