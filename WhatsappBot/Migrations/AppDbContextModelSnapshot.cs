@@ -43,6 +43,9 @@ namespace WebApplication1.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("PhoneNumber")
+                        .IsUnique();
+
                     b.ToTable("PhoneNumbers");
                 });
 
