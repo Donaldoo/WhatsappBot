@@ -34,13 +34,13 @@ public class PhoneNumberController:ControllerBase
     }
 
     [HttpPost("Create-phoneNumber")]
-    public async Task<IActionResult> CreatePhoneNumber(IFormFile file)
+    public async Task<IActionResult> CreatePhoneNumber(IFormFile file,Guid campaignId)
     {
         try
         { 
             if (file == null || file.Length == 0) return BadRequest(new { text = "Invalid file uploaded" });
             
-            await _phoneNumberService.AddPhoneNumbers(file);
+            await _phoneNumberService.AddPhoneNumbersWithCampaign(file,campaignId);
             return StatusCode(201, new { message = "Numbers added to database" });
 
         }

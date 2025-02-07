@@ -2,7 +2,7 @@ namespace WhatsappBot.Models;
 
 public class Product
 {
-    public string Id { get; set; }
+    public Guid Id { get; set; }
     public string Name { get; set; }
     public string Number { get; set; }
     public string PriceNotFormatted { get; set; }
@@ -10,6 +10,9 @@ public class Product
     public string Link { get; set; }
     public string Description { get; set; }
     public string Image { get; set; }
+    public DateTime CreatedDate { get; set; }
+    public DateTime UpdatedDate { get; set; }
+    public ICollection<CampaignProducts> CampaignProductsCollectionCollection { get; set; } = new List<CampaignProducts>();
 }
 
 public class ProductsContainer

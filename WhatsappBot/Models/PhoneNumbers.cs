@@ -1,7 +1,4 @@
 ﻿#nullable enable
-using System.ComponentModel.DataAnnotations;
-using Microsoft.EntityFrameworkCore;
-
 namespace WhatsappBot.Models;
 
 public class PhoneNumbers
@@ -11,4 +8,7 @@ public class PhoneNumbers
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public string? Company { get; set; }
+    public ICollection<CampaignPhoneNumbers> CampaignNumbersCollection { get; set; } = new List<CampaignPhoneNumbers>();
+    public DateTime CreatedDate { get; set; }
+    public DateTime UpdatedDate { get; set; }
 }

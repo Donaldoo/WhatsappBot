@@ -1,27 +1,33 @@
 ﻿using System.Text.RegularExpressions;
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Twilio.Types;
 using WhatsappBot.Data;
 using WhatsappBot.Models;
+using WhatsappBot.Models.DTO;
 
 namespace WhatsappBot.Services;
 
 public class PhoneNumberService
 {
     private readonly AppDbContext _db;
-
-    public PhoneNumberService(AppDbContext db)
+    private readonly IMapper _mapper;
+    public PhoneNumberService(AppDbContext db, IMapper mapper)
     {
         _db = db;
+        _mapper = mapper;
     }
 
-    public async Task<IEnumerable<PhoneNumbers>> GetAllPhoneNumbers()
+    public async Task<IEnumerable<PhoneNumbersDto>> GetAllPhoneNumbers()
     {
         try
         {
-            IEnumerable<PhoneNumbers> phoneNumberList = await _db.PhoneNumbers.ToListAsync();
-            
-            return phoneNumberList;
+            IEnumerable<PhoneNumbers> phoneNumberList = await _db.PhoneNumbers
+                .Include(p => p.CampaignNumbersCollection)
+                .ThenInclude(pc => pc.Campaign)
+                .ToListAsync();
+            var phoneNumbers = _mapper.Map<List<PhoneNumbersDto>>(phoneNumberList);
+            return phoneNumbers;
 
         }
         catch (Exception e)
@@ -46,41 +52,99 @@ public class PhoneNumberService
 
     public async Task<PhoneNumbers> CreatePhoneNumber(string phoneInput)
     {
-        string formattedPhoneNumber  = phoneInput.Replace("whatsapp:", "").Trim();
+        var formattedPhoneNumber  = phoneInput.Replace("whatsapp:", "").Trim();
     
         var phoneNumber = new PhoneNumbers
         {
             PhoneNumber = formattedPhoneNumber
         };
-       await _db.AddAsync(phoneNumber);
-       await _db.SaveChangesAsync();
+        var existingPhoneNumber =
+            await _db.PhoneNumbers.FirstOrDefaultAsync(n => n.PhoneNumber.ToLower() == formattedPhoneNumber);
+        if (existingPhoneNumber!=null)
+        {
+            throw new InvalidOperationException("Number already exists");
+        }
+        await _db.PhoneNumbers.AddAsync(phoneNumber);
+        await _db.SaveChangesAsync();
     
         return phoneNumber;
     }
 
-  
-    public async Task AddPhoneNumbers(IFormFile file)
+    public async Task AddPhoneNumbersWithCampaign(IFormFile file,Guid campaignId)
     {
-        if (file == null || file.Length == 0) throw new ArgumentException("Invalid file provided");
+        try
+        {
+            if (file == null || file.Length == 0) throw new ArgumentException("Invalid file provided");
 
-        var phoneNumbersToAdd = new List<PhoneNumbers>(); 
-        using var reader = new StreamReader(file.OpenReadStream()); 
-        var regex = new Regex(@"\+\d+");
+            var phoneNumbersToAdd = new List<PhoneNumbers>(); 
+            using var reader = new StreamReader(file.OpenReadStream()); 
+            var regex = new Regex(@"\+\d+");
         
-        while (await reader.ReadLineAsync() is { } line)
-        {
-            var match = regex.Match(line);
+            while (await reader.ReadLineAsync() is { } line)
+            {
+                var match = regex.Match(line);
 
-            if (!match.Success) continue;
-            var cleanedNumber = match.Value;
+                if (!match.Success) continue;
+                var cleanedNumber = match.Value;
                 
-            phoneNumbersToAdd.Add(new PhoneNumbers { PhoneNumber = cleanedNumber });
+                phoneNumbersToAdd.Add(new PhoneNumbers { PhoneNumber = cleanedNumber,CreatedDate = DateTime.UtcNow, UpdatedDate = DateTime.UtcNow});
+            }
+
+            await StorePhoneNumbersToDb(phoneNumbersToAdd);
+
+            var phoneNumbers = await _db.PhoneNumbers.ToListAsync();
+            
+            await AddCampaignPhoneNumbers(phoneNumbers, campaignId);
+
         }
-        const int batchSize = 1000;
-        foreach (object[] batch in phoneNumbersToAdd.Chunk(batchSize))
+        catch (Exception e)
         {
-            await _db.AddRangeAsync(batch);
-            await _db.SaveChangesAsync();
+            throw new InvalidOperationException("An error occurred while processing the file.", e);
         }
     }
+    private async Task StorePhoneNumbersToDb(List<PhoneNumbers> phoneNumbersList)
+    {
+        var existingNumbers = await _db.PhoneNumbers
+            .Where(p => phoneNumbersList.Select(n => n.PhoneNumber).Contains(p.PhoneNumber))
+            .Select(p => p.PhoneNumber).ToListAsync();
+
+        var newPhoneNumbers = phoneNumbersList.Where(p => !existingNumbers.Contains(p.PhoneNumber)).ToList();
+        
+        await _db.AddRangeAsync(newPhoneNumbers);
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task AddCampaignPhoneNumbers(IEnumerable<PhoneNumbers> phoneNumbersList,Guid campaignId)
+    {
+        var campaign = await _db.Campaigns
+            .Include(c => c.CampaignNumbersCollection)
+            .FirstOrDefaultAsync(c => c.Id == campaignId);
+
+        if (campaign==null)
+        {
+            throw new KeyNotFoundException("Campaign not found");
+        }
+
+        var existingNumbersInCampaign = campaign.CampaignNumbersCollection.Select(n => n.PhoneNumberId);
+
+        IEnumerable<Guid> numbersInCampaign = existingNumbersInCampaign.ToList();
+        foreach (var phoneNumber in phoneNumbersList)
+        {
+            if (numbersInCampaign.Contains(phoneNumber.Id))
+            {
+                continue;
+            }
+            var campaignPhoneNumbers = new CampaignPhoneNumbers
+            {
+                CampaignId = campaign.Id,
+                PhoneNumberId = phoneNumber.Id,
+                CreatedDate = DateTime.UtcNow,
+                UpdatedDate = DateTime.UtcNow
+            };
+            campaign.CampaignNumbersCollection.Add(campaignPhoneNumbers);
+        }
+   
+        await _db.SaveChangesAsync();
+    }
+    
 }
